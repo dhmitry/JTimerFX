@@ -2,6 +2,7 @@ package timer;
 
 public class Interval {
   // maximum duration is 59:59
+  public static final int MIN_DURATION = 1000;
   public static final int MAX_DURATION = 59 * 59 * 1000;
 
   private String label;
@@ -10,11 +11,15 @@ public class Interval {
   public Interval(String label, String duration) {
     this.label = label;
 
-    if (isValidDuration(stringToMs(duration))) {
+    if (isValidDuration(duration)) {
       this.duration = stringToMs(duration);
     } else {
       throw new IllegalArgumentException("Duration must be between 0-" + MAX_DURATION);
     }
+  }
+
+  public Interval() {
+    this("Interval", msToString(MIN_DURATION));
   }
 
   public String getLabel() {
@@ -29,11 +34,12 @@ public class Interval {
     return duration;
   }
 
-  public void setDuration(int duration) {
-    if(isValidDuration(duration)) {
-      this.duration = duration;
+  public void setDuration(String duration) {
+    if (isValidDuration(duration)) {
+      this.duration = stringToMs(duration);
     } else {
-      throw new IllegalArgumentException("Duration must be between 0-" + MAX_DURATION);
+      throw new IllegalArgumentException(
+        "Duration must be between " + MIN_DURATION + "-" + MAX_DURATION);
     }
   }
 
@@ -41,16 +47,22 @@ public class Interval {
     return "[" + msToString(duration) + "] " + label;
   }
 
-  public static boolean isValidDuration(int duration) {
-    return duration >= 0 && duration <= MAX_DURATION;
+  public static boolean isValidDuration(String duration) {
+    try {
+      int ms = stringToMs(duration);
+      return ms >= MIN_DURATION && ms <= MAX_DURATION;
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
   }
 
   public static String msToString(int ms) {
     if (ms < 0 || ms > MAX_DURATION) {
-      return "00:00";
+      throw new IllegalArgumentException(
+        "Duration must be between 0-" + MAX_DURATION);
     } else {
-      int secs = (int) (ms / 1000 % 60);
-      int mins = (int) (ms / 1000 / 60);
+      int secs = ms / 1000 % 60;
+      int mins = ms / 1000 / 60;
 
       return String.format("%02d:%02d", mins, secs);
     }
@@ -58,7 +70,7 @@ public class Interval {
 
   public static int stringToMs(String duration) {
     if (!duration.matches("\\d\\d:\\d\\d")) {
-      return 0;
+      throw new IllegalArgumentException("Invalid format");
     }
 
     try {
@@ -67,9 +79,14 @@ public class Interval {
 
       int ms = (mins * 60 + secs) * 1000;
 
-      return ms > MAX_DURATION ? 0 : ms;
+      if (ms < MIN_DURATION || ms > MAX_DURATION) {
+        throw new IllegalArgumentException(
+          "Duration must be between " + MIN_DURATION + "-" + MAX_DURATION);
+      } else {
+        return ms;
+      }
     } catch (NumberFormatException e) {
-      return 0;
+      throw new IllegalArgumentException("Invalid format");
     }
   }
 }
