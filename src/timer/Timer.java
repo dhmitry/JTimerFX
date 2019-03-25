@@ -8,11 +8,7 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -29,19 +25,29 @@ public class Timer {
 
   private Timeline timeline;
   private ObservableList<Interval> intervals;
+  private int current;
   private int remaining;
 
   private Stage stage;
-  private Label time;
+  private Label remainingLabel;
+  private Button startButton;
+  private Button pauseButton;
   private ListView<Interval> listView;
+  private Button newButton;
+  private Button removeButton;
 
   public Timer(Stage stage) {
     timeline = new Timeline();
     intervals = FXCollections.observableArrayList();
     remaining = 0;
+    current = 0;
     this.stage = stage;
-    time = new Label();
+    remainingLabel = new Label();
+    startButton = new Button("START");
+    pauseButton = new Button("PAUSE");
     listView = new ListView<>(intervals);
+    newButton = new Button("New interval");
+    removeButton = new Button("Remove selected");
   }
 
   public void open() {
@@ -50,44 +56,30 @@ public class Timer {
   }
 
   private void initialize() {
-    time.setFont(Font.font("System", FontWeight.BOLD, 80));
-    time.setAlignment(Pos.CENTER);
-    time.setMaxWidth(Double.MAX_VALUE);
+    remainingLabel.setFont(Font.font("System", FontWeight.BOLD, 80));
+    remainingLabel.setAlignment(Pos.CENTER);
+    remainingLabel.setMaxWidth(Double.MAX_VALUE);
     reset();
 
-    Button start = new Button("START");
-    Button pause = new Button("PAUSE");
-    Button reset = new Button("RESET");
-    HBox.setHgrow(start, Priority.ALWAYS);
-    HBox.setHgrow(pause, Priority.ALWAYS);
+    HBox.setHgrow(startButton, Priority.ALWAYS);
+    HBox.setHgrow(pauseButton, Priority.ALWAYS);
+    startButton.setMaxWidth(Double.MAX_VALUE);
+    pauseButton.setMaxWidth(Double.MAX_VALUE);
 
-    Image playImg = new Image("file:play.png");
-    start.setGraphic(new ImageView(playImg));
-
-    start.setOnAction(actionEvent -> start());
-    pause.setOnAction(actionEvent -> pause());
-    reset.setOnAction(actionEvent -> reset());
-
-    VBox.setVgrow(start, Priority.ALWAYS);
-    VBox.setVgrow(pause, Priority.ALWAYS);
-    VBox.setVgrow(reset, Priority.ALWAYS);
-    start.setMaxWidth(Double.MAX_VALUE);
-    pause.setMaxWidth(Double.MAX_VALUE);
-    reset.setMaxWidth(Double.MAX_VALUE);
+    startButton.setOnAction(actionEvent -> start());
+    pauseButton.setOnAction(actionEvent -> pause());
 
     listView.setEditable(true);
+    listView.setPrefHeight(150);
     listView.setCellFactory(intervalListView -> new IntervalCell());
-    listView.getFocusModel().focus(1);
-    //    list.setMouseTransparent(true);
-    //    list.setFocusTraversable(false);
+    listView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
     VBox.setVgrow(listView, Priority.ALWAYS);
 
-    intervals.add(new Interval("Interval #1", "00:05"));
-    intervals.add(new Interval("Interval #2", "00:05"));
-    intervals.add(new Interval("Interval #3", "00:05"));
+    for (int i = 0; i < 5; i++) {
+      intervals.add(new Interval("Interval #" + (i + 1), "00:05"));
+    }
 
-    Button newInterval = new Button("New interval");
-    newInterval.setOnAction(actionEvent -> {
+    newButton.setOnAction(actionEvent -> {
       intervals.add(new Interval());
 
       listView.getSelectionModel().select(intervals.size() - 1);
@@ -96,7 +88,22 @@ public class Timer {
       listView.edit(intervals.size() - 1);
     });
 
-    VBox layout = new VBox(5, time, new HBox(5, start, pause), listView, newInterval);
+    removeButton.setOnAction(
+      actionEvent -> intervals.removeAll(listView.getSelectionModel().getSelectedItems()));
+
+    HBox.setHgrow(newButton, Priority.ALWAYS);
+    HBox.setHgrow(removeButton, Priority.ALWAYS);
+    newButton.setMaxWidth(Double.MAX_VALUE);
+    removeButton.setMaxWidth(Double.MAX_VALUE);
+
+    ComboBox<String> comboBox = new ComboBox<>();
+    comboBox.setMaxWidth(Double.MAX_VALUE);
+    comboBox.getItems().add("Default");
+    comboBox.getSelectionModel().select(0);
+
+    VBox layout =
+      new VBox(5, remainingLabel, new HBox(5, startButton, pauseButton), new Separator(), comboBox,
+        listView, new HBox(5, newButton, removeButton));
     layout.setPadding(new Insets(5));
 
     Scene scene = new Scene(layout);
@@ -105,12 +112,18 @@ public class Timer {
   }
 
   private void start() {
-    if (intervals.size() > 0) {
-      listView.getSelectionModel().select(0);
-      remaining = intervals.get(0).getDuration();
-      updateLabel();
+    if (timeline.getStatus() == Animation.Status.PAUSED) {
+      timeline.play();
+      startButton.setText("START");
+      startButton.setDisable(true);
+      pauseButton.setText("PAUSE");
+      pauseButton.setDisable(false);
+    } else if (intervals.size() > 0) {
+      reset();
+      updateIntervals();
+      disableUi();
 
-      pause();
+      remaining = intervals.get(0).getDuration();
 
       timeline.getKeyFrames()
         .add(new KeyFrame(Duration.millis(UPDATE_RATE), actionEvent -> update()));
@@ -120,14 +133,32 @@ public class Timer {
   }
 
   private void pause() {
-    timeline.stop();
-    timeline.getKeyFrames().clear();
+    if (timeline.getStatus() == Animation.Status.RUNNING) {
+      startButton.setText("RESUME");
+      startButton.setDisable(false);
+      pauseButton.setText("STOP");
+    } else if (timeline.getStatus() == Animation.Status.PAUSED) {
+      reset();
+      pauseButton.setText("PAUSE");
+    }
+
+    timeline.pause();
+    //timeline.getKeyFrames().clear();
   }
 
   private void reset() {
-    pause();
+    timeline.stop();
+    timeline.getKeyFrames().clear();
     remaining = 0;
+    current = 0;
     updateLabel();
+    for (Interval interval : intervals) {
+      interval.setState(IntervalState.Default);
+    }
+    listView.refresh();
+    startButton.setText("START");
+    pauseButton.setText("PAUSE");
+    enableUi();
   }
 
   private void update() {
@@ -140,22 +171,63 @@ public class Timer {
   }
 
   private void updateLabel() {
-    time.setText(Interval.msToString(remaining));
+    remainingLabel.setText(Interval.msToString(remaining + 1000 - UPDATE_RATE));
+  }
+
+  private void updateIntervals() {
+    if (!intervals.isEmpty()) {
+      if (current > 0) {
+        intervals.get(current - 1).setState(IntervalState.Previous);
+      }
+      if (current > 1) {
+        intervals.get(current - 2).setState(IntervalState.Finished);
+      }
+
+      intervals.get(current).setState(IntervalState.Current);
+
+      if (current < intervals.size() - 1) {
+        intervals.get(current + 1).setState(IntervalState.Next);
+      }
+
+      listView.refresh();
+    }
   }
 
   private void done() {
-    if (listView.getSelectionModel().getSelectedIndex() == intervals.size() - 1) {
-      reset();
-      AudioClip clip = new AudioClip(new File("done.wav").toURI().toString());
-      clip.play();
-    } else {
-      AudioClip clip = new AudioClip(new File("timer.wav").toURI().toString());
-      listView.getSelectionModel().selectNext();
-      remaining = intervals.get(listView.getSelectionModel().getSelectedIndex()).getDuration();
-      updateLabel();
+    AudioClip clip = new AudioClip(new File("done.wav").toURI().toString());
 
+    if (current == intervals.size() - 1) {
+      reset();
       clip.setCycleCount(3);
-      clip.play();
+
+      AudioClip clip2 = new AudioClip(new File("timer.wav").toURI().toString());
+      clip2.setCycleCount(7);
+      clip2.play();
+    } else {
+      remaining = intervals.get(++current).getDuration();
+      updateLabel();
+      updateIntervals();
     }
+
+    clip.play();
+  }
+
+  private void disableUi() {
+    startButton.setDisable(true);
+    pauseButton.setDisable(false);
+    listView.setMouseTransparent(true);
+    listView.setFocusTraversable(false);
+    listView.getSelectionModel().select(-1);
+    newButton.setDisable(true);
+    removeButton.setDisable(true);
+  }
+
+  private void enableUi() {
+    startButton.setDisable(false);
+    pauseButton.setDisable(true);
+    listView.setMouseTransparent(false);
+    listView.setFocusTraversable(true);
+    newButton.setDisable(false);
+    removeButton.setDisable(false);
   }
 }

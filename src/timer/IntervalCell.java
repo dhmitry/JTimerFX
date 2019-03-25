@@ -1,10 +1,11 @@
 package timer;
 
 import javafx.application.Platform;
+import javafx.geometry.Insets;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
 
 public class IntervalCell extends ListCell<Interval> {
   String prevText;
@@ -12,15 +13,44 @@ public class IntervalCell extends ListCell<Interval> {
   protected void updateItem(Interval item, boolean empty) {
     super.updateItem(item, empty);
 
-    setText(item == null ? "" : item.toString());
+    if (item == null) {
+      setText("");
+      setBackground(Background.EMPTY);
+      return;
+    }
+
+    setText(item.toString());
+    setTextFill(Color.BLACK);
+
+    Color color;
+
+    if (isSelected()) {
+      color = Color.web("#413E4A");
+      setTextFill(Color.WHITE);
+    } else {
+      switch (item.getState()) {
+        case Current:
+          color = Color.web("#413E4A");
+          setTextFill(Color.WHITE);
+          break;
+        case Previous:
+        case Finished:
+          color = Color.LIGHTGREY;
+          break;
+        default:
+          color = Color.WHITE;
+      }
+    }
+
+    setBackground(new Background(new BackgroundFill(color, CornerRadii.EMPTY, Insets.EMPTY)));
   }
 
   public void startEdit() {
     prevText = getText();
     super.startEdit();
 
-    TextField durationField = new TextField();
-    TextField labelField = new TextField();
+    TextField durationField = new TextField(prevText.substring(1, 6));
+    TextField labelField = new TextField(prevText.substring(8));
     durationField.setPromptText("mm:ss");
     labelField.setPromptText("label");
 

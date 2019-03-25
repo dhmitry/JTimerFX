@@ -7,6 +7,7 @@ public class Interval {
 
   private String label;
   private int duration;
+  private IntervalState state;
 
   public Interval(String label, String duration) {
     this.label = label;
@@ -16,6 +17,8 @@ public class Interval {
     } else {
       throw new IllegalArgumentException("Duration must be between 0-" + MAX_DURATION);
     }
+
+    this.state = IntervalState.Default;
   }
 
   public Interval() {
@@ -43,6 +46,14 @@ public class Interval {
     }
   }
 
+  public IntervalState getState() {
+    return state;
+  }
+
+  public void setState(IntervalState state) {
+    this.state = state;
+  }
+
   public String toString() {
     return "[" + msToString(duration) + "] " + label;
   }
@@ -58,8 +69,7 @@ public class Interval {
 
   public static String msToString(int ms) {
     if (ms < 0 || ms > MAX_DURATION) {
-      throw new IllegalArgumentException(
-        "Duration must be between 0-" + MAX_DURATION);
+      throw new IllegalArgumentException("Duration must be between 0-" + MAX_DURATION);
     } else {
       int secs = ms / 1000 % 60;
       int mins = ms / 1000 / 60;
