@@ -9,6 +9,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -19,11 +20,14 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public class Timer {
   private static final int UPDATE_RATE = 50;
 
   private Timeline timeline;
+  private ObservableList<String> presets;
   private ObservableList<Interval> intervals;
   private int current;
   private int remaining;
@@ -32,19 +36,23 @@ public class Timer {
   private Label remainingLabel;
   private Button startButton;
   private Button pauseButton;
+  private ComboBox<String> presetComboBox;
   private ListView<Interval> listView;
   private Button newButton;
   private Button removeButton;
 
   public Timer(Stage stage) {
     timeline = new Timeline();
+    presets = FXCollections.observableArrayList();
     intervals = FXCollections.observableArrayList();
-    remaining = 0;
     current = 0;
+    remaining = 0;
+
     this.stage = stage;
     remainingLabel = new Label();
     startButton = new Button("START");
     pauseButton = new Button("PAUSE");
+    presetComboBox = new ComboBox<>();
     listView = new ListView<>(intervals);
     newButton = new Button("New interval");
     removeButton = new Button("Remove selected");
@@ -53,9 +61,27 @@ public class Timer {
   public void open() {
     initialize();
     stage.show();
+    stage.setMinHeight(stage.getHeight());
+    stage.setMinWidth(stage.getWidth());
   }
 
   private void initialize() {
+    // TODO maybe use multiple tabs instead of a single layout, i.e.
+    //  a timer tab and a preset/interval tab
+
+    File dir = new File("presets/");
+    File[] files = dir.listFiles((file, name) -> name.endsWith(".timer"));
+
+    presets.add("Default");
+    if (files != null) {
+      Arrays.sort(files);
+      for (File f : files) {
+        String name = f.getName();
+        presets.add(name.substring(0, name.length() - IntervalFile.EXTENSION.length()));
+      }
+    }
+    presets.add("<new preset>");
+
     remainingLabel.setFont(Font.font("System", FontWeight.BOLD, 80));
     remainingLabel.setAlignment(Pos.CENTER);
     remainingLabel.setMaxWidth(Double.MAX_VALUE);
@@ -75,13 +101,10 @@ public class Timer {
     listView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
     VBox.setVgrow(listView, Priority.ALWAYS);
 
-    for (int i = 0; i < 5; i++) {
-      intervals.add(new Interval("Interval #" + (i + 1), "00:05"));
-    }
-
     newButton.setOnAction(actionEvent -> {
       intervals.add(new Interval());
 
+      listView.getSelectionModel().select(-1);
       listView.getSelectionModel().select(intervals.size() - 1);
       listView.layout();
 
@@ -96,14 +119,27 @@ public class Timer {
     newButton.setMaxWidth(Double.MAX_VALUE);
     removeButton.setMaxWidth(Double.MAX_VALUE);
 
-    ComboBox<String> comboBox = new ComboBox<>();
-    comboBox.setMaxWidth(Double.MAX_VALUE);
-    comboBox.getItems().add("Default");
-    comboBox.getSelectionModel().select(0);
+    presetComboBox.setMaxWidth(Double.MAX_VALUE);
+    presetComboBox.setItems(presets);
+    presetComboBox.getSelectionModel().selectedIndexProperty().addListener(
+      (observableValue, oldIndex, newIndex) -> changePreset(oldIndex.intValue(),
+        newIndex.intValue()));
+
+    presetComboBox.getSelectionModel().select(0);
+
+    CheckBox checkBox = new CheckBox("Repeat");
+    Button removePreset = new Button("Remove");
+    Button renamePreset = new Button("Rename");
+
+    HBox presetButtons = new HBox(5, renamePreset, removePreset);
+
+    AnchorPane anchorPane = new AnchorPane(presetButtons, checkBox);
+    AnchorPane.setRightAnchor(checkBox, 5.0);
+    AnchorPane.setTopAnchor(checkBox, 5.0);
 
     VBox layout =
-      new VBox(5, remainingLabel, new HBox(5, startButton, pauseButton), new Separator(), comboBox,
-        listView, new HBox(5, newButton, removeButton));
+      new VBox(5, remainingLabel, new HBox(5, startButton, pauseButton), presetComboBox, anchorPane,
+        new Separator(), listView, new HBox(5, newButton, removeButton));
     layout.setPadding(new Insets(5));
 
     Scene scene = new Scene(layout);
@@ -121,7 +157,7 @@ public class Timer {
     } else if (intervals.size() > 0) {
       reset();
       updateIntervals();
-      disableUi();
+      startUi();
 
       remaining = intervals.get(0).getDuration();
 
@@ -143,7 +179,6 @@ public class Timer {
     }
 
     timeline.pause();
-    //timeline.getKeyFrames().clear();
   }
 
   private void reset() {
@@ -156,9 +191,10 @@ public class Timer {
       interval.setState(IntervalState.Default);
     }
     listView.refresh();
+    listView.scrollTo(0);
     startButton.setText("START");
     pauseButton.setText("PAUSE");
-    enableUi();
+    stopUi();
   }
 
   private void update() {
@@ -205,6 +241,7 @@ public class Timer {
       clip2.play();
     } else {
       remaining = intervals.get(++current).getDuration();
+      listView.scrollTo(Math.max(0, current - 3));
       updateLabel();
       updateIntervals();
     }
@@ -212,9 +249,10 @@ public class Timer {
     clip.play();
   }
 
-  private void disableUi() {
+  private void startUi() {
     startButton.setDisable(true);
     pauseButton.setDisable(false);
+    presetComboBox.setDisable(true);
     listView.setMouseTransparent(true);
     listView.setFocusTraversable(false);
     listView.getSelectionModel().select(-1);
@@ -222,12 +260,52 @@ public class Timer {
     removeButton.setDisable(true);
   }
 
-  private void enableUi() {
+  private void stopUi() {
     startButton.setDisable(false);
     pauseButton.setDisable(true);
+    presetComboBox.setDisable(false);
     listView.setMouseTransparent(false);
     listView.setFocusTraversable(true);
     newButton.setDisable(false);
     removeButton.setDisable(false);
+  }
+
+  private void changePreset(int oldIndex, int newIndex) {
+    if (oldIndex > 0) {
+      savePreset(oldIndex);
+    }
+
+    if (newIndex >= 0) {
+      loadPreset(newIndex);
+    }
+  }
+
+  private void savePreset(int i) {
+    if (i <= 0 || i >= presets.size()) {
+      throw new IllegalArgumentException(
+        "Index must be between 0 and the number of presets (excl.)");
+    }
+
+    String filename = "presets/" + presets.get(i) + IntervalFile.EXTENSION;
+    IntervalFile.save(new ArrayList<>(intervals), filename);
+  }
+
+  private void loadPreset(int i) {
+    if (i < 0 || i >= presets.size()) {
+      throw new IllegalArgumentException(
+        "Index must be between 1 and the number of presets (excl.)");
+    }
+
+    intervals.clear();
+
+    if (i == 0) {
+      for (int j = 1; j <= 3; j++) {
+        String duration = String.format("00:%02d", 5 * j);
+        intervals.add(new Interval("Interval #" + j, duration));
+      }
+    } else {
+      String filename = "presets/" + presets.get(i) + IntervalFile.EXTENSION;
+      intervals.addAll(IntervalFile.load(filename));
+    }
   }
 }

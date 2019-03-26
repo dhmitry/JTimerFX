@@ -49,14 +49,14 @@ public class IntervalCell extends ListCell<Interval> {
     prevText = getText();
     super.startEdit();
 
-    TextField durationField = new TextField(prevText.substring(1, 6));
-    TextField labelField = new TextField(prevText.substring(8));
+    TextField durationField = new TextField(prevText.substring(0, 5));
+    TextField labelField = new TextField(prevText.substring(6));
     durationField.setPromptText("mm:ss");
     labelField.setPromptText("label");
 
     HBox hbox = new HBox(5, durationField, labelField);
 
-    durationField.setMaxWidth(50);
+    durationField.setMaxWidth(55);
     labelField.setPrefWidth(50);
 
     HBox.setHgrow(labelField, Priority.ALWAYS);
@@ -71,8 +71,8 @@ public class IntervalCell extends ListCell<Interval> {
     });
     labelField.setOnAction(durationField.getOnAction());
 
-    graphicProperty().set(hbox);
     textProperty().set(null);
+    graphicProperty().set(hbox);
 
     Platform.runLater(durationField::requestFocus);
   }

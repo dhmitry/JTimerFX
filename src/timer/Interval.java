@@ -55,7 +55,7 @@ public class Interval {
   }
 
   public String toString() {
-    return "[" + msToString(duration) + "] " + label;
+    return msToString(duration) + " " + label;
   }
 
   public static boolean isValidDuration(String duration) {
