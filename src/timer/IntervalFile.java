@@ -29,8 +29,10 @@ public class IntervalFile {
 
   public static void save(ArrayList<Interval> intervals, String filename) {
     try (var out = new BufferedWriter(new FileWriter(filename))) {
-      for (Interval i : intervals) {
-        out.write(i.toString() + "\n");
+      if (intervals != null) {
+        for (Interval i : intervals) {
+          out.write(i.toString() + "\n");
+        }
       }
     } catch (final IOException e) {
       throw new IllegalArgumentException("Invalid timer preset filename");

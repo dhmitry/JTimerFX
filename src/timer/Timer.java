@@ -25,6 +25,7 @@ import java.util.Arrays;
 
 public class Timer {
   private static final int UPDATE_RATE = 50;
+  private static final String PRESET_DIR = "presets/";
 
   private Timeline timeline;
   private ObservableList<String> presets;
@@ -71,7 +72,7 @@ public class Timer {
     // TODO maybe use multiple tabs instead of a single layout, i.e.
     //  a timer tab and a preset/interval tab
 
-    File dir = new File("presets/");
+    File dir = new File(PRESET_DIR);
     File[] files = dir.listFiles((file, name) -> name.endsWith(".timer"));
 
     presets.add("Default");
@@ -275,7 +276,7 @@ public class Timer {
   }
 
   private void changePreset(int oldIndex, int newIndex) {
-    if (oldIndex > 0) {
+    if (oldIndex > 0 && oldIndex < presets.size() - 1) {
       savePreset(oldIndex);
     }
 
@@ -285,12 +286,14 @@ public class Timer {
   }
 
   private void savePreset(int i) {
+    System.out.println("SAVING " + presets.get(i));
+
     if (i <= 0 || i >= presets.size()) {
       throw new IllegalArgumentException(
         "Index must be between 0 and the number of presets (excl.)");
     }
 
-    String filename = "presets/" + presets.get(i) + IntervalFile.EXTENSION;
+    String filename = PRESET_DIR + presets.get(i) + IntervalFile.EXTENSION;
     IntervalFile.save(new ArrayList<>(intervals), filename);
   }
 
@@ -307,13 +310,32 @@ public class Timer {
         String duration = String.format("00:%02d", 5 * j);
         intervals.add(new Interval("Interval #" + j, duration));
       }
+    } else if (i == presets.size() - 1) {
+      presetComboBox.getSelectionModel().select(0);
+
+      String name = getNewPresetName("New preset");
+      IntervalFile.save(null, PRESET_DIR + name + IntervalFile.EXTENSION);
+
+      presets.add(presets.size() - 1, name);
+      presetComboBox.getSelectionModel().select(presets.size() - 2);
     } else {
-      String filename = "presets/" + presets.get(i) + IntervalFile.EXTENSION;
+      String filename = PRESET_DIR + presets.get(i) + IntervalFile.EXTENSION;
       try {
         intervals.addAll(IntervalFile.load(filename));
       } catch (final Exception e) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, e.getMessage());
+        alert.show();
         intervals.clear();
       }
     }
+  }
+
+  private String getNewPresetName(String fallback) {
+    TextInputDialog dialog = new TextInputDialog();
+    dialog.setTitle("New preset name");
+    dialog.setGraphic(null);
+    dialog.setHeaderText("Please enter a new label");
+
+    return dialog.showAndWait().orElse(fallback);
   }
 }
