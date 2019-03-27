@@ -1,7 +1,8 @@
 package timer;
 
 public class Interval {
-  // maximum duration is 59:59
+
+  // minimal 00:01, maximal 59:59
   public static final int MIN_DURATION = 1000;
   public static final int MAX_DURATION = 59 * 59 * 1000;
 
@@ -9,18 +10,28 @@ public class Interval {
   private int duration;
   private IntervalState state;
 
+  /**
+   * Creates an interval from the given label and duration. Duration should be represented as a
+   * string in the format - mm:ss and be between 00:01 and 59:59.
+   *
+   * @param label    label of the interval
+   * @param duration duration of the interval
+   */
   public Interval(String label, String duration) {
     this.label = label;
 
     if (isValidDuration(duration)) {
       this.duration = stringToMs(duration);
     } else {
-      throw new IllegalArgumentException("Duration must be between 0-" + MAX_DURATION);
+      throw new IllegalArgumentException("Duration must be between 00:01-59:59");
     }
 
     this.state = IntervalState.Default;
   }
 
+  /**
+   * Creates an interval labeled "Interval" with the minimal duration 00:01.
+   */
   public Interval() {
     this("Interval", msToString(MIN_DURATION));
   }
@@ -91,7 +102,7 @@ public class Interval {
 
       if (ms < MIN_DURATION || ms > MAX_DURATION) {
         throw new IllegalArgumentException(
-          "Duration must be between " + MIN_DURATION + "-" + MAX_DURATION);
+          "Duration must be between 00:01-59:59");
       } else {
         return ms;
       }

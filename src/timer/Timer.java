@@ -37,6 +37,7 @@ public class Timer {
   private Button startButton;
   private Button pauseButton;
   private ComboBox<String> presetComboBox;
+  private CheckBox repeatCheckBox;
   private ListView<Interval> listView;
   private Button newButton;
   private Button removeButton;
@@ -53,6 +54,7 @@ public class Timer {
     startButton = new Button("START");
     pauseButton = new Button("PAUSE");
     presetComboBox = new ComboBox<>();
+    repeatCheckBox = new CheckBox("Repeat");
     listView = new ListView<>(intervals);
     newButton = new Button("New interval");
     removeButton = new Button("Remove selected");
@@ -127,15 +129,13 @@ public class Timer {
 
     presetComboBox.getSelectionModel().select(0);
 
-    CheckBox checkBox = new CheckBox("Repeat");
     Button removePreset = new Button("Remove");
     Button renamePreset = new Button("Rename");
-
     HBox presetButtons = new HBox(5, renamePreset, removePreset);
 
-    AnchorPane anchorPane = new AnchorPane(presetButtons, checkBox);
-    AnchorPane.setRightAnchor(checkBox, 5.0);
-    AnchorPane.setTopAnchor(checkBox, 5.0);
+    AnchorPane anchorPane = new AnchorPane(presetButtons, repeatCheckBox);
+    AnchorPane.setRightAnchor(repeatCheckBox, 5.0);
+    AnchorPane.setTopAnchor(repeatCheckBox, 5.0);
 
     VBox layout =
       new VBox(5, remainingLabel, new HBox(5, startButton, pauseButton), presetComboBox, anchorPane,
@@ -234,11 +234,15 @@ public class Timer {
 
     if (current == intervals.size() - 1) {
       reset();
-      clip.setCycleCount(3);
+      //clip.setCycleCount(3);
 
       AudioClip clip2 = new AudioClip(new File("timer.wav").toURI().toString());
-      clip2.setCycleCount(7);
+      clip2.setCycleCount(4);
       clip2.play();
+
+      if (repeatCheckBox.isSelected()) {
+        start();
+      }
     } else {
       remaining = intervals.get(++current).getDuration();
       listView.scrollTo(Math.max(0, current - 3));
@@ -305,7 +309,11 @@ public class Timer {
       }
     } else {
       String filename = "presets/" + presets.get(i) + IntervalFile.EXTENSION;
-      intervals.addAll(IntervalFile.load(filename));
+      try {
+        intervals.addAll(IntervalFile.load(filename));
+      } catch (final Exception e) {
+        intervals.clear();
+      }
     }
   }
 }
