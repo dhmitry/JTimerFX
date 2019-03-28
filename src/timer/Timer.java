@@ -318,7 +318,6 @@ public class Timer {
   }
 
   private void savePreset(int i) {
-    System.out.println("SAVING " + presets.get(i));
     if (i <= 0 || i >= presets.size()) {
       throw new IllegalArgumentException(
         "Index must be between 0 and the number of presets (excl.)");
@@ -329,7 +328,10 @@ public class Timer {
   }
 
   public void saveCurrentPreset() {
-    savePreset(presetComboBox.getSelectionModel().getSelectedIndex());
+    int currentIndex = presetComboBox.getSelectionModel().getSelectedIndex();
+    if (currentIndex != 0 && currentIndex != presets.size() - 1) {
+      savePreset(currentIndex);
+    }
   }
 
   private void loadPreset(int i) {
