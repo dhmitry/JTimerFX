@@ -3,6 +3,7 @@ package timer;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -38,10 +39,12 @@ public class Timer {
   private Button startButton;
   private Button pauseButton;
   private ComboBox<String> presetComboBox;
+  private Button renamePresetButton;
+  private Button removePresetButton;
   private CheckBox repeatCheckBox;
   private ListView<Interval> listView;
-  private Button newButton;
-  private Button removeButton;
+  private Button newIntervalButton;
+  private Button removeIntervalButton;
 
   public Timer(Stage stage) {
     timeline = new Timeline();
@@ -55,10 +58,12 @@ public class Timer {
     startButton = new Button("START");
     pauseButton = new Button("PAUSE");
     presetComboBox = new ComboBox<>();
+    renamePresetButton = new Button("Rename");
+    removePresetButton = new Button("Remove");
     repeatCheckBox = new CheckBox("Repeat");
     listView = new ListView<>(intervals);
-    newButton = new Button("New interval");
-    removeButton = new Button("Remove selected");
+    newIntervalButton = new Button("New interval");
+    removeIntervalButton = new Button("Remove selected");
   }
 
   public void open() {
@@ -69,11 +74,24 @@ public class Timer {
   }
 
   private void initialize() {
-    // TODO maybe use multiple tabs instead of a single layout, i.e.
-    //  a timer tab and a preset/interval tab
+    reset();
 
+    initializePresets();
+    initializeUi();
+  }
+
+  private void initializePresets() {
     File dir = new File(PRESET_DIR);
-    File[] files = dir.listFiles((file, name) -> name.endsWith(".timer"));
+    if (!dir.exists()) {
+      if (!dir.mkdir()) {
+        Alert alert =
+          new Alert(Alert.AlertType.ERROR, "Could not create an empty directory for presets");
+        alert.showAndWait();
+        Platform.exit();
+      }
+    }
+
+    File[] files = dir.listFiles((file, name) -> name.endsWith(IntervalFile.EXTENSION));
 
     presets.add("Default");
     if (files != null) {
@@ -84,19 +102,17 @@ public class Timer {
       }
     }
     presets.add("<new preset>");
+  }
 
+  private void initializeUi() {
     remainingLabel.setFont(Font.font("System", FontWeight.BOLD, 80));
     remainingLabel.setAlignment(Pos.CENTER);
     remainingLabel.setMaxWidth(Double.MAX_VALUE);
-    reset();
 
     HBox.setHgrow(startButton, Priority.ALWAYS);
     HBox.setHgrow(pauseButton, Priority.ALWAYS);
     startButton.setMaxWidth(Double.MAX_VALUE);
     pauseButton.setMaxWidth(Double.MAX_VALUE);
-
-    startButton.setOnAction(actionEvent -> start());
-    pauseButton.setOnAction(actionEvent -> pause());
 
     listView.setEditable(true);
     listView.setPrefHeight(150);
@@ -104,7 +120,44 @@ public class Timer {
     listView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
     VBox.setVgrow(listView, Priority.ALWAYS);
 
-    newButton.setOnAction(actionEvent -> {
+    HBox.setHgrow(newIntervalButton, Priority.ALWAYS);
+    HBox.setHgrow(removeIntervalButton, Priority.ALWAYS);
+    newIntervalButton.setMaxWidth(Double.MAX_VALUE);
+    removeIntervalButton.setMaxWidth(Double.MAX_VALUE);
+
+    presetComboBox.setMaxWidth(Double.MAX_VALUE);
+    presetComboBox.setItems(presets);
+
+    HBox presetButtons = new HBox(5, renamePresetButton, removePresetButton);
+
+    AnchorPane anchorPane = new AnchorPane(presetButtons, repeatCheckBox);
+    AnchorPane.setRightAnchor(repeatCheckBox, 5.0);
+    AnchorPane.setTopAnchor(repeatCheckBox, 5.0);
+
+    VBox layout =
+      new VBox(5, remainingLabel, new HBox(5, startButton, pauseButton), presetComboBox, anchorPane,
+        new Separator(), listView, new HBox(5, newIntervalButton, removeIntervalButton));
+    layout.setPadding(new Insets(5));
+
+    // initialize button actions and set appropriate callbacks
+    initializeActions();
+
+    // needs to be called after initializing actions so there are some default intervals
+    presetComboBox.getSelectionModel().select(0);
+
+    Scene scene = new Scene(layout);
+    stage.setScene(scene);
+  }
+
+  private void initializeActions() {
+    // button actions
+    startButton.setOnAction(actionEvent -> start());
+    pauseButton.setOnAction(actionEvent -> pause());
+
+    renamePresetButton.setOnAction(actionEvent -> renameCurrentPreset());
+    removePresetButton.setOnAction(actionEvent -> removeCurrentPreset());
+
+    newIntervalButton.setOnAction(actionEvent -> {
       intervals.add(new Interval());
 
       listView.getSelectionModel().select(-1);
@@ -114,38 +167,13 @@ public class Timer {
       listView.edit(intervals.size() - 1);
     });
 
-    removeButton.setOnAction(
+    removeIntervalButton.setOnAction(
       actionEvent -> intervals.removeAll(listView.getSelectionModel().getSelectedItems()));
 
-    HBox.setHgrow(newButton, Priority.ALWAYS);
-    HBox.setHgrow(removeButton, Priority.ALWAYS);
-    newButton.setMaxWidth(Double.MAX_VALUE);
-    removeButton.setMaxWidth(Double.MAX_VALUE);
-
-    presetComboBox.setMaxWidth(Double.MAX_VALUE);
-    presetComboBox.setItems(presets);
+    // other callbacks
     presetComboBox.getSelectionModel().selectedIndexProperty().addListener(
       (observableValue, oldIndex, newIndex) -> changePreset(oldIndex.intValue(),
         newIndex.intValue()));
-
-    presetComboBox.getSelectionModel().select(0);
-
-    Button removePreset = new Button("Remove");
-    Button renamePreset = new Button("Rename");
-    HBox presetButtons = new HBox(5, renamePreset, removePreset);
-
-    AnchorPane anchorPane = new AnchorPane(presetButtons, repeatCheckBox);
-    AnchorPane.setRightAnchor(repeatCheckBox, 5.0);
-    AnchorPane.setTopAnchor(repeatCheckBox, 5.0);
-
-    VBox layout =
-      new VBox(5, remainingLabel, new HBox(5, startButton, pauseButton), presetComboBox, anchorPane,
-        new Separator(), listView, new HBox(5, newButton, removeButton));
-    layout.setPadding(new Insets(5));
-
-    Scene scene = new Scene(layout);
-
-    stage.setScene(scene);
   }
 
   private void start() {
@@ -258,21 +286,25 @@ public class Timer {
     startButton.setDisable(true);
     pauseButton.setDisable(false);
     presetComboBox.setDisable(true);
+    renamePresetButton.setDisable(true);
+    removePresetButton.setDisable(true);
     listView.setMouseTransparent(true);
     listView.setFocusTraversable(false);
     listView.getSelectionModel().select(-1);
-    newButton.setDisable(true);
-    removeButton.setDisable(true);
+    newIntervalButton.setDisable(true);
+    removeIntervalButton.setDisable(true);
   }
 
   private void stopUi() {
     startButton.setDisable(false);
     pauseButton.setDisable(true);
     presetComboBox.setDisable(false);
+    renamePresetButton.setDisable(false);
+    removePresetButton.setDisable(false);
     listView.setMouseTransparent(false);
     listView.setFocusTraversable(true);
-    newButton.setDisable(false);
-    removeButton.setDisable(false);
+    newIntervalButton.setDisable(false);
+    removeIntervalButton.setDisable(false);
   }
 
   private void changePreset(int oldIndex, int newIndex) {
@@ -287,7 +319,6 @@ public class Timer {
 
   private void savePreset(int i) {
     System.out.println("SAVING " + presets.get(i));
-
     if (i <= 0 || i >= presets.size()) {
       throw new IllegalArgumentException(
         "Index must be between 0 and the number of presets (excl.)");
@@ -295,6 +326,10 @@ public class Timer {
 
     String filename = PRESET_DIR + presets.get(i) + IntervalFile.EXTENSION;
     IntervalFile.save(new ArrayList<>(intervals), filename);
+  }
+
+  public void saveCurrentPreset() {
+    savePreset(presetComboBox.getSelectionModel().getSelectedIndex());
   }
 
   private void loadPreset(int i) {
@@ -313,11 +348,14 @@ public class Timer {
     } else if (i == presets.size() - 1) {
       presetComboBox.getSelectionModel().select(0);
 
-      String name = getNewPresetName("New preset");
-      IntervalFile.save(null, PRESET_DIR + name + IntervalFile.EXTENSION);
+      String name = getNewPresetName("");
+      if (!name.equals("")) {
+        // create an empty preset file
+        IntervalFile.save(null, PRESET_DIR + name + IntervalFile.EXTENSION);
 
-      presets.add(presets.size() - 1, name);
-      presetComboBox.getSelectionModel().select(presets.size() - 2);
+        presets.add(presets.size() - 1, name);
+        presetComboBox.getSelectionModel().select(presets.size() - 2);
+      }
     } else {
       String filename = PRESET_DIR + presets.get(i) + IntervalFile.EXTENSION;
       try {
@@ -330,12 +368,51 @@ public class Timer {
     }
   }
 
-  private String getNewPresetName(String fallback) {
-    TextInputDialog dialog = new TextInputDialog();
+  private void renameCurrentPreset() {
+    int currentIndex = presetComboBox.getSelectionModel().getSelectedIndex();
+
+    if (currentIndex != 0 && currentIndex != presets.size() - 1) {
+      String newName = getNewPresetName(presetComboBox.getValue());
+      if (!newName.equals("")) {
+        String oldFilename = PRESET_DIR + presetComboBox.getValue() + IntervalFile.EXTENSION;
+        String newFilename = PRESET_DIR + newName + IntervalFile.EXTENSION;
+
+        File oldFile = new File(oldFilename);
+        File newFile = new File(newFilename);
+
+        if (!oldFile.renameTo(newFile)) {
+          Alert alert = new Alert(Alert.AlertType.ERROR, "Could not rename the current preset");
+          alert.show();
+        } else {
+          presets.set(currentIndex, newName);
+        }
+      }
+    }
+  }
+
+  private void removeCurrentPreset() {
+    int toDelete = presetComboBox.getSelectionModel().getSelectedIndex();
+
+    if (toDelete != 0 && toDelete != presets.size() - 1) {
+      String filename = PRESET_DIR + presetComboBox.getValue() + IntervalFile.EXTENSION;
+      File file = new File(filename);
+
+      presetComboBox.getSelectionModel().select(0);
+      presets.remove(toDelete);
+
+      if (!file.delete()) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, "Could not remove the current preset");
+        alert.show();
+      }
+    }
+  }
+
+  private String getNewPresetName(String filler) {
+    TextInputDialog dialog = new TextInputDialog(filler);
     dialog.setTitle("New preset name");
     dialog.setGraphic(null);
-    dialog.setHeaderText("Please enter a new label");
+    dialog.setHeaderText("Please enter a new name");
 
-    return dialog.showAndWait().orElse(fallback);
+    return dialog.showAndWait().orElse("");
   }
 }
