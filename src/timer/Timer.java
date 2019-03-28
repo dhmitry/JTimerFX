@@ -91,14 +91,14 @@ public class Timer {
       }
     }
 
-    File[] files = dir.listFiles((file, name) -> name.endsWith(IntervalFile.EXTENSION));
+    File[] files = dir.listFiles((file, name) -> name.endsWith(PresetFile.EXTENSION));
 
     presets.add("Default");
     if (files != null) {
       Arrays.sort(files);
       for (File f : files) {
         String name = f.getName();
-        presets.add(name.substring(0, name.length() - IntervalFile.EXTENSION.length()));
+        presets.add(name.substring(0, name.length() - PresetFile.EXTENSION.length()));
       }
     }
     presets.add("<new preset>");
@@ -323,8 +323,8 @@ public class Timer {
         "Index must be between 0 and the number of presets (excl.)");
     }
 
-    String filename = PRESET_DIR + presets.get(i) + IntervalFile.EXTENSION;
-    IntervalFile.save(new ArrayList<>(intervals), filename);
+    String filename = PRESET_DIR + presets.get(i) + PresetFile.EXTENSION;
+    PresetFile.save(new ArrayList<>(intervals), filename);
   }
 
   public void saveCurrentPreset() {
@@ -345,7 +345,7 @@ public class Timer {
     if (i == 0) {
       for (int j = 1; j <= 3; j++) {
         String duration = String.format("00:%02d", 5 * j);
-        intervals.add(new Interval("Interval #" + j, duration));
+        intervals.add(new Interval(duration, "Interval #" + j));
       }
     } else if (i == presets.size() - 1) {
       presetComboBox.getSelectionModel().select(0);
@@ -353,15 +353,15 @@ public class Timer {
       String name = getNewPresetName("");
       if (!name.equals("")) {
         // create an empty preset file
-        IntervalFile.save(null, PRESET_DIR + name + IntervalFile.EXTENSION);
+        PresetFile.save(null, PRESET_DIR + name + PresetFile.EXTENSION);
 
         presets.add(presets.size() - 1, name);
         presetComboBox.getSelectionModel().select(presets.size() - 2);
       }
     } else {
-      String filename = PRESET_DIR + presets.get(i) + IntervalFile.EXTENSION;
+      String filename = PRESET_DIR + presets.get(i) + PresetFile.EXTENSION;
       try {
-        intervals.addAll(IntervalFile.load(filename));
+        intervals.addAll(PresetFile.load(filename));
       } catch (final Exception e) {
         Alert alert = new Alert(Alert.AlertType.ERROR, e.getMessage());
         alert.show();
@@ -376,8 +376,8 @@ public class Timer {
     if (currentIndex != 0 && currentIndex != presets.size() - 1) {
       String newName = getNewPresetName(presetComboBox.getValue());
       if (!newName.equals("")) {
-        String oldFilename = PRESET_DIR + presetComboBox.getValue() + IntervalFile.EXTENSION;
-        String newFilename = PRESET_DIR + newName + IntervalFile.EXTENSION;
+        String oldFilename = PRESET_DIR + presetComboBox.getValue() + PresetFile.EXTENSION;
+        String newFilename = PRESET_DIR + newName + PresetFile.EXTENSION;
 
         File oldFile = new File(oldFilename);
         File newFile = new File(newFilename);
@@ -396,7 +396,7 @@ public class Timer {
     int toDelete = presetComboBox.getSelectionModel().getSelectedIndex();
 
     if (toDelete != 0 && toDelete != presets.size() - 1) {
-      String filename = PRESET_DIR + presetComboBox.getValue() + IntervalFile.EXTENSION;
+      String filename = PRESET_DIR + presetComboBox.getValue() + PresetFile.EXTENSION;
       File file = new File(filename);
 
       presetComboBox.getSelectionModel().select(0);

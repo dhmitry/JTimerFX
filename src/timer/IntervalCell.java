@@ -64,7 +64,7 @@ public class IntervalCell extends ListCell<Interval> {
     durationField.setOnAction(actionEvent -> {
       String duration = durationField.getText();
       if (Interval.isValidDuration(duration)) {
-        commitEdit(new Interval(labelField.getText(), durationField.getText()));
+        commitEdit(new Interval(durationField.getText(), labelField.getText()));
       } else {
         cancelEdit();
       }

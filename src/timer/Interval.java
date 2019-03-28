@@ -17,7 +17,7 @@ public class Interval {
    * @param label    label of the interval
    * @param duration duration of the interval
    */
-  public Interval(String label, String duration) {
+  public Interval(String duration, String label) {
     this.label = label;
 
     if (isValidDuration(duration)) {
@@ -33,7 +33,7 @@ public class Interval {
    * Creates an interval labeled "Interval" with the minimal duration 00:01.
    */
   public Interval() {
-    this("Interval", msToString(MIN_DURATION));
+    this(msToString(MIN_DURATION), "Interval");
   }
 
   public String getLabel() {
@@ -101,8 +101,7 @@ public class Interval {
       int ms = (mins * 60 + secs) * 1000;
 
       if (ms < MIN_DURATION || ms > MAX_DURATION) {
-        throw new IllegalArgumentException(
-          "Duration must be between 00:01-59:59");
+        throw new IllegalArgumentException("Duration must be between 00:01-59:59");
       } else {
         return ms;
       }
