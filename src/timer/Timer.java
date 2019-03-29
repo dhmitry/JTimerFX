@@ -387,6 +387,10 @@ public class Timer {
           alert.show();
         } else {
           presets.set(currentIndex, newName);
+
+          // need to set this separately, otherwise
+          // it keeps the old value (for some reason)
+          presetComboBox.setValue(newName);
         }
       }
     }
